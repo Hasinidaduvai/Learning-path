@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Waypoint — Learning Route Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blueprint: #0B2545;
+    --blueprint-deep: #071A33;
+    --line-cyan: #7FD1D9;
+    --line-cyan-dim: rgba(127, 209, 217, 0.28);
+    --amber: #F2A65A;
+    --paper: #EAF2F5;
+    --paper-dim: rgba(234, 242, 245, 0.62);
+    --error: #F2775A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background:
+      linear-gradient(var(--blueprint-deep), var(--blueprint-deep)),
+      repeating-linear-gradient(0deg, var(--line-cyan-dim) 0px, transparent 1px, transparent 32px),
+      repeating-linear-gradient(90deg, var(--line-cyan-dim) 0px, transparent 1px, transparent 32px);
+    background-color: var(--blueprint);
+    color: var(--paper);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 24px 120px;
+  }
+
+  .titleblock {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--line-cyan-dim);
+    padding-bottom: 18px;
+    margin-bottom: 44px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--line-cyan);
+  }
+
+  .titleblock .meta { display: flex; gap: 20px; }
+  .titleblock .meta span { opacity: 0.85; }
+
+  header { margin-bottom: 44px; }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: clamp(34px, 5.4vw, 50px);
+    line-height: 1.06;
+    margin: 0 0 16px;
+    letter-spacing: -0.01em;
+  }
+
+  h1 span { color: var(--amber); }
+
+  .sub {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--paper-dim);
+    max-width: 54ch;
+    margin: 0;
+  }
+
+  .panel {
+    position: relative;
+    border: 1px solid var(--line-cyan-dim);
+    padding: 32px;
+  }
+
+  .reg-mark { position: absolute; width: 14px; height: 14px; }
+  .reg-mark::before, .reg-mark::after { content: ""; position: absolute; background: var(--line-cyan); }
+  .reg-mark::before { width: 100%; height: 1px; top: 50%; }
+  .reg-mark::after { height: 100%; width: 1px; left: 50%; }
+  .reg-tl { top: -7px; left: -7px; }
+  .reg-tr { top: -7px; right: -7px; }
+  .reg-bl { bottom: -7px; left: -7px; }
+  .reg-br { bottom: -7px; right: -7px; }
+
+  .field { margin-bottom: 22px; }
+  .field:last-of-type { margin-bottom: 0; }
+
+  label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--line-cyan);
+    margin-bottom: 9px;
+  }
+
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    padding: 12px 14px;
+    background: rgba(234, 242, 245, 0.04);
+    border: 1px solid var(--line-cyan-dim);
+    border-radius: 2px;
+    color: var(--paper);
+  }
+
+  input::placeholder, textarea::placeholder { color: rgba(234,242,245,0.32); }
+
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--line-cyan);
+    background: rgba(234, 242, 245, 0.07);
+  }
+
+  select option { background: var(--blueprint-deep); }
+
+  textarea { resize: vertical; min-height: 68px; font-size: 15px; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+
+  .toggles { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.02em;
+    padding: 9px 14px 9px 10px;
+    border: 1px solid var(--line-cyan-dim);
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .toggle input { accent-color: var(--amber); }
+
+  .toggle.checked { border-color: var(--line-cyan); background: rgba(127, 209, 217, 0.08); }
+
+  button.submit {
+    width: 100%;
+    margin-top: 26px;
+    padding: 16px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: 0.01em;
+    color: var(--blueprint-deep);
+    background: var(--amber);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+
+  button.submit:hover { background: #f5b876; }
+  button.submit:active { transform: scale(0.995); }
+  button.submit:disabled { opacity: 0.55; cursor: wait; }
+
+  button.submit:focus-visible,
+  input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  #status {
+    margin-top: 18px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--line-cyan);
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  #status.visible { display: flex; }
+
+  .spinner {
+    width: 12px; height: 12px;
+    border: 2px solid var(--line-cyan-dim);
+    border-top-color: var(--line-cyan);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #error {
+    display: none;
+    margin-top: 18px;
+    padding: 14px 16px;
+    border: 1px solid var(--error);
+    border-left-width: 3px;
+    color: var(--error);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  #results { margin-top: 60px; display: none; }
+
+  .results-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid var(--line-cyan-dim);
+    padding-bottom: 16px;
+  }
+
+  .results-head h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    text-transform: capitalize;
+  }
+
+  .results-meta { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--line-cyan); }
+
+  .actions-note {
+    margin: 16px 0 8px;
+    font-size: 13px;
+    color: var(--amber);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .route { margin-top: 36px; }
+
+  .segment { position: relative; }
+
+  .dimline { display: flex; align-items: center; gap: 10px; padding-left: 2px; height: 34px; }
+  .dimline .tick { width: 1px; height: 10px; background: var(--line-cyan); }
+  .dimline .shaft { flex: 1; height: 1px; background: var(--line-cyan-dim); }
+  .dimline .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--line-cyan);
+    white-space: nowrap;
+  }
+
+  .phase-block {
+    border: 1px solid var(--line-cyan-dim);
+    border-left: 3px solid var(--amber);
+    padding: 22px 24px;
+    position: relative;
+  }
+
+  .phase-block:first-child { border-left-color: var(--line-cyan); }
+
+  .phase-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .phase-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 19px; }
+
+  .phase-topics { margin: 10px 0 14px; padding: 0; list-style: none; }
+
+  .phase-topics li {
+    font-size: 15px;
+    line-height: 1.65;
+    padding-left: 16px;
+    position: relative;
+    color: var(--paper-dim);
+  }
+
+  .phase-topics li::before {
+    content: "·";
+    position: absolute;
+    left: 0;
+    color: var(--line-cyan);
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+
+  .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+    padding: 4px 9px;
+    border: 1px solid var(--line-cyan-dim);
+    color: var(--line-cyan);
+  }
+
+  .videos { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+
+  .video-link {
+    font-size: 13px;
+    color: var(--paper-dim);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .video-link:hover { color: var(--amber); border-bottom-color: var(--amber); }
+
+  .milestone { font-size: 14px; border-top: 1px solid var(--line-cyan-dim); padding-top: 12px; margin-top: 2px; }
+
+  .milestone strong {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--amber);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  footer {
+    margin-top: 64px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--paper-dim);
+    text-align: center;
+    border-top: 1px solid var(--line-cyan-dim);
+    padding-top: 20px;
+  }
+
+  @media (max-width: 560px) {
+    .row { grid-template-columns: 1fr; }
+    .wrap { padding: 36px 18px 80px; }
+    .titleblock { flex-direction: column; align-items: flex-start; gap: 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; border-top-color: var(--line-cyan); }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="titleblock">
+    <span>WAYPOINT</span>
+    <div class="meta">
+      <span>SHEET 1/1</span>
+      <span>SCALE — PERSONAL</span>
+      <span>REV A</span>
+    </div>
+  </div>
+
+  <header>
+    <h1>Draft your route<br/>to <span>mastery</span>.</h1>
+    <p class="sub">Enter what you want to learn. The planner works out a realistic sequence of phases — and, if instructed, files a copy to Notion or blocks time on your calendar.</p>
+  </header>
+
+  <div class="panel">
+    <div class="reg-mark reg-tl"></div>
+    <div class="reg-mark reg-tr"></div>
+    <div class="reg-mark reg-bl"></div>
+    <div class="reg-mark reg-br"></div>
+
+    <form id="pathForm">
+      <div class="field">
+        <label for="topic">Subject</label>
+        <input type="text" id="topic" placeholder="e.g. Data analysis, Spanish, watercolor painting" required />
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="level">Current level</label>
+          <select id="level">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="hours">Hours per week</label>
+          <input type="number" id="hours" value="5" min="1" max="40" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="notes">Constraints or context</label>
+        <textarea id="notes" placeholder="Optional — a deadline, a specific interest, anything else relevant"></textarea>
+      </div>
+
+      <div class="field">
+        <label>On completion</label>
+        <div class="toggles">
+          <label class="toggle" id="notionToggleWrap">
+            <input type="checkbox" id="notionToggle" />
+            File to Notion
+          </label>
+          <label class="toggle" id="calToggleWrap">
+            <input type="checkbox" id="calToggle" />
+            Block time on Google Calendar
+          </label>
+        </div>
+      </div>
+
+      <button type="submit" class="submit" id="submitBtn">Generate route</button>
+
+      <div id="status"><span class="spinner"></span><span id="statusText">Drafting…</span></div>
+      <div id="error"></div>
+    </form>
+  </div>
+
+  <div id="results">
+    <div class="results-head">
+      <h2 id="resTopic"></h2>
+      <div class="results-meta" id="resMeta"></div>
+    </div>
+    <div class="actions-note" id="resActions" style="display:none;"></div>
+    <div class="route" id="route"></div>
+  </div>
+
+  <footer>WAYPOINT — powered by your own Gemini + Composio agent</footer>
+</div>
+
+<script>
+  const WEBHOOK_URL = "https://eomu61tud1lzatl.m.pipedream.net";
+
+  const form = document.getElementById('pathForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const errorEl = document.getElementById('error');
+  const resultsEl = document.getElementById('results');
+  const routeEl = document.getElementById('route');
+
+  document.querySelectorAll('.toggle').forEach(t => {
+    const box = t.querySelector('input');
+    box.addEventListener('change', () => t.classList.toggle('checked', box.checked));
+  });
+
+  const loadingMessages = ["Drafting…", "Sequencing phases…", "Sizing the timeline…", "Finalizing…"];
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const topic = document.getElementById('topic').value.trim();
+    const level = document.getElementById('level').value;
+    const hoursPerWeek = Number(document.getElementById('hours').value) || 5;
+    const notes = document.getElementById('notes').value.trim();
+    const wantsNotion = document.getElementById('notionToggle').checked;
+    const wantsCalendar = document.getElementById('calToggle').checked;
+
+    if (!topic) return;
+
+    let goalParts = [];
+    if (notes) goalParts.push(notes);
+    if (wantsNotion) goalParts.push("Please save this learning path to my Notion.");
+    if (wantsCalendar) goalParts.push("Please block study time for this on my Google Calendar.");
+    const goal = goalParts.join(" ");
+
+    submitBtn.disabled = true;
+    errorEl.style.display = 'none';
+    resultsEl.style.display = 'none';
+    statusEl.classList.add('visible');
+
+    let msgIndex = 0;
+    statusText.textContent = loadingMessages[0];
+    const msgInterval = setInterval(() => {
+      msgIndex = (msgIndex + 1) % loadingMessages.length;
+      statusText.textContent = loadingMessages[msgIndex];
+    }, 2200);
+
+    try {
+      const res = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, level, hoursPerWeek, goal })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'the planner returned no result');
+      }
+
+      renderResults(data, { topic, level, hoursPerWeek });
+    } catch (err) {
+      errorEl.textContent = "Route not generated — " + err.message + ". Try again.";
+      errorEl.style.display = 'block';
+    } finally {
+      clearInterval(msgInterval);
+      statusEl.classList.remove('visible');
+      submitBtn.disabled = false;
+    }
+  });
+
+  function renderResults(data, inputs) {
+    document.getElementById('resTopic').textContent = data.topic || inputs.topic;
+    document.getElementById('resMeta').textContent =
+      (data.totalWeeks ? data.totalWeeks + ' WEEKS' : '') +
+      ' — ' + (data.level || inputs.level).toUpperCase() +
+      ' — ' + inputs.hoursPerWeek + ' HRS/WK';
+
+    const actionsEl = document.getElementById('resActions');
+    if (data.actionsTaken && data.actionsTaken.length > 0) {
+      actionsEl.style.display = 'block';
+      actionsEl.textContent = '✓ ' + data.actionsTaken.join('   ·   ');
+    } else {
+      actionsEl.style.display = 'none';
+    }
+
+    routeEl.innerHTML = '';
+    (data.phases || []).forEach((phase, i) => {
+      if (i > 0) {
+        const dim = document.createElement('div');
+        dim.className = 'dimline';
+        dim.innerHTML = `<div class="tick"></div><div class="shaft"></div><div class="label">NEXT</div><div class="shaft"></div><div class="tick"></div>`;
+        routeEl.appendChild(dim);
+      }
+
+      const seg = document.createElement('div');
+      seg.className = 'segment';
+
+      const topicsHtml = (phase.topics || []).map(t => `<li>${escapeHtml(t)}</li>`).join('');
+      const tagsHtml = (phase.resourceTypes || []).map(r => `<span class="tag">${escapeHtml(r)}</span>`).join('');
+      const videosHtml = (phase.videoSuggestions || [])
+        .map(q => `<a class="video-link" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${encodeURIComponent(q)}">▶ ${escapeHtml(q)}</a>`)
+        .join('');
+
+      seg.innerHTML = `
+        <div class="phase-block">
+          <div class="phase-top">
+            <div class="phase-name">${escapeHtml(phase.phase || '')}</div>
+            <div class="tag">${escapeHtml(phase.weeks || '')}</div>
+          </div>
+          <ul class="phase-topics">${topicsHtml}</ul>
+          <div class="tags">${tagsHtml}</div>
+          ${videosHtml ? `<div class="videos">${videosHtml}</div>` : ''}
+          ${phase.milestone ? `<div class="milestone"><strong>Milestone</strong>${escapeHtml(phase.milestone)}</div>` : ''}
+        </div>
+      `;
+      routeEl.appendChild(seg);
+    });
+
+    resultsEl.style.display = 'block';
+    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+</script>
+
+</body>
+</html>
